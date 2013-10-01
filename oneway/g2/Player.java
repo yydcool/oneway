@@ -29,17 +29,28 @@ public class Player extends oneway.sim.Player
             	rlights[i] = false;
         }
         for (int i = 0; i != nsegments; ++i) {
-        	llights[i] = true;
+        	if(i!=nsegments-1)
+        		llights[i] = true;
             if (!noCrash(movingCars, left, right, llights, rlights)){
             	llights[i] = false;
             }
             
-            rlights[i] = true;
-            if (noCrash(movingCars, left, right, llights, rlights)){
+            if (i!=0)
+            	rlights[i] = true;
+            if (!noCrash(movingCars, left, right, llights, rlights)){
             	rlights[i] = false;
-            }
-            	
+            }	
         }
+        int i=nsegments-1;
+        llights[i] = true;
+        if (!noCrash(movingCars, left, right, llights, rlights)){
+        	llights[i] = false;
+        }
+        i=0;
+        rlights[i] = true;
+        if (noCrash(movingCars, left, right, llights, rlights)){
+        	rlights[i] = false;
+        }	
 
         //rlights[0]=true;
         System.out.println(noCrash(movingCars, left, right, llights, rlights));
