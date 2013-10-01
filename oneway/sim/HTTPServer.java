@@ -11,8 +11,8 @@ class HTTPServer {
 
 	public HTTPServer() throws Exception
 	{
-		sock = new ServerSocket();
-		sock.bind(null);
+		sock = new ServerSocket(8001);
+		//sock.bind(null);
 		if (!sock.isBound())
 			throw new Exception("Invalid HTTP server port");
 		port = sock.getLocalPort();

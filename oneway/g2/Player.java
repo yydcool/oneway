@@ -43,17 +43,20 @@ public class Player extends oneway.sim.Player
         }
         int i=nsegments-1;
         llights[i] = true;
+        left[nsegments].add(0);
         if (!noCrash(movingCars, left, right, llights, rlights)){
         	llights[i] = false;
         }
+        left[nsegments].removeLast();
         i=0;
         rlights[i] = true;
-        if (noCrash(movingCars, left, right, llights, rlights)){
+        right[0].add(0);
+        if (!noCrash(movingCars, left, right, llights, rlights)){
         	rlights[i] = false;
         }	
-
+    	right[0].removeLast();
         //rlights[0]=true;
-        System.out.println(noCrash(movingCars, left, right, llights, rlights));
+        System.err.println(noCrash(movingCars, left, right, llights, rlights));
     }
 
 
@@ -76,12 +79,12 @@ public class Player extends oneway.sim.Player
     	LinkedList<MovingCar> addedCars=new LinkedList<MovingCar>();
     	for (int i = 0; i < right.length-1; i++) 
     	if(right[i].size()>0 && rlights[i]){
-    		MovingCar c=new MovingCar(i, 0, 1, 0);
+    		MovingCar c=new MovingCar(i, -1, 1, 0);
 			addedCars.add(c);
 		}
     	for (int i = 1; i < left.length; i++) 
         	if(left[i].size()>0 && llights[i-1]){
-        		MovingCar c=new MovingCar(i-1, nblocks, -1, 0);
+        		MovingCar c=new MovingCar(i-1, nblocks+1, -1, 0);
     			addedCars.add(c);
     		}
     	for (int i = 0; i < movingCars.length; i++) {
