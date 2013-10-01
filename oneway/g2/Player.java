@@ -24,48 +24,25 @@ public class Player extends oneway.sim.Player
                           boolean[] llights,
                           boolean[] rlights)
     {
-        
-        for (int i = 0; i != nsegments; ++i) {
-            llights[i] = false;
-            rlights[i] = false;
+    	for (int i = 0; i != nsegments; ++i) {
+            	llights[i] = false;
+            	rlights[i] = false;
         }
-
-        boolean[] indanger = new boolean[nsegments+1];
-        
-        // find out almost full parking lot
-        for (int i = 1; i != nsegments; ++i) {
-            if (left[i].size() + right[i].size() 
-                > capacity[i] * 1) {
-                indanger[i] = true;
-            }            
-        }
-
         for (int i = 0; i != nsegments; ++i) {
-            // if right bound has car
-            // and the next parking lot is not in danger
-            if (right[i].size() > 0 &&
-                !indanger[i+1] &&
-                !hasTraffic(movingCars, i, -1)) {
-                rlights[i] = true;
+        	llights[i] = true;
+            if (!noCrash(movingCars, left, right, llights, rlights)){
+            	llights[i] = false;
             }
             
-            if (left[i+1].size() > 0 &&
-                !indanger[i] &&
-                !hasTraffic(movingCars, i, 1)) {
-                llights[i] = true;
+            rlights[i] = true;
+            if (noCrash(movingCars, left, right, llights, rlights)){
+            	rlights[i] = false;
             }
-
-            // if both left and right is on
-            // find which dir is in more danger
-            if (rlights[i] && llights[i]) {
-                double lratio = 1.0 * (left[i+1].size() + right[i+1].size()) / capacity[i+1];
-                double rratio = 1.0 * (left[i].size() + right[i].size()) / capacity[i];
-                if (lratio > rratio)
-                    rlights[i] = false;
-                else
-                    llights[i] = false;
-            }
+            	
         }
+
+        //rlights[0]=true;
+        System.out.println(noCrash(movingCars, left, right, llights, rlights));
     }
 
 
@@ -83,12 +60,80 @@ public class Player extends oneway.sim.Player
             Parking[] right,
             boolean[] llights,
             boolean[] rlights){
-    	boolean[] leftblocking=new boolean[nsegments];
-    	boolean[] rightblocking=new boolean[nsegments];
-    	for (int i = 0; i < rightblocking.length; i++) {
-			
+    	
+    	//update cars
+    	LinkedList<MovingCar> addedCars=new LinkedList<MovingCar>();
+    	for (int i = 0; i < right.length-1; i++) 
+    	if(right[i].size()>0 && rlights[i]){
+    		MovingCar c=new MovingCar(i, 0, 1, 0);
+			addedCars.add(c);
 		}
-    	return true;
+    	for (int i = 1; i < left.length; i++) 
+        	if(left[i].size()>0 && llights[i-1]){
+        		MovingCar c=new MovingCar(i-1, nblocks, -1, 0);
+    			addedCars.add(c);
+    		}
+    	for (int i = 0; i < movingCars.length; i++) {
+			addedCars.add(movingCars[i]);
+		}
+    	movingCars=addedCars.toArray(new MovingCar[0]);
+    	//sort cars
+    	for (int i = 0; i < movingCars.length-1; i++) {
+			for (int j = i+1; j < movingCars.length; j++) 
+			if (movingCars[i].segment>movingCars[j].segment || ((movingCars[i].segment==movingCars[j].segment)&&(movingCars[i].block>movingCars[j].block))){
+				MovingCar t=movingCars[i];
+				movingCars[i]=movingCars[j];
+				movingCars[j]=t;
+			}
+		}
+    	//get park info
+    	int[] parked=new int[nsegments+1];
+    	for (int i = 1; i < parked.length-1; i++) {
+			parked[i]=left[i].size()+right[i].size();
+		}
+    	//judge
+    	int[] blocking=new int[movingCars.length];
+    	
+    	for (int i = movingCars.length-1; i >=0 ; i--) 
+    	if (movingCars[i].dir==1){
+    		MovingCar c=movingCars[i];
+			for (int j = c.segment+1; j < parked.length; j++) 
+			if (parked[j]<capacity[j]){
+				parked[j]++;
+				blocking[i]=j*nblocks-(c.segment*nblocks+c.block);
+				break;
+			}
+		}
+    	for (int i = 0; i <movingCars.length ; i++) 
+        	if (movingCars[i].dir==-1){
+        		MovingCar c=movingCars[i];
+    			for (int j = c.segment; j >=0; j--) 
+    			if (parked[j]<capacity[j]){
+    				parked[j]++;
+    				blocking[i]=(c.segment*nblocks+c.block)-j*nblocks;
+    				break;
+    			}
+    		}
+    	int crash=0;
+    	for (int i = 0; i <movingCars.length ; i++){
+    		for (int j = 0; j <movingCars.length ; j++)
+    			if (movingCars[i].dir==1 && movingCars[j].dir==-1){
+    				int min=blocking[i]<blocking[j]?blocking[i]:blocking[j];
+    				int posi=movingCars[i].segment*nblocks+movingCars[i].block;
+    				int posj=movingCars[j].segment*nblocks+movingCars[j].block;
+    				if (min+min>posj-posi){
+    					crash++;
+    					int crash_pos=(posi+posj)/2;
+    					if ((crash_pos+1)%nblocks==0 && crash_pos!=(posi+posj+1)/2 ) //maybe a bug? 
+    						crash--;
+    				}
+    			}
+    		if (crash>0) break;
+    	}
+    	if (crash==0) return true;
+    	
+    	//do a reverse check again
+    	return false;
     }
 
     private int nsegments;
