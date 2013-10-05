@@ -9,24 +9,35 @@ public class Player extends oneway.sim.Player
 
     public Player() {}
     int tick=0;
+    int[] position;
 
-    public void init(int nsegments, int nblocks, int[] capacity)
+    public void init(int nsegments, int[] nblocks, int[] capacity)
     {
         this.nsegments = nsegments;
-        this.nblocks = nblocks;
+        this.nblocks = nblocks.clone();
         this.capacity = capacity.clone();
-        /*for (int i = 0; i < capacity.length; i++) {
-			capacity[i]-=1;
-		}*/
+        position=capacity.clone();
+        position[0]=0;
+        for (int i = 1; i < position.length; i++) {
+			position[i]=position[i-1]+nblocks[i-1];
+		}
     }
 
 
-    public void setLights(oneway.sim.MovingCar[] old_movingCars,
+    public void setLights(oneway.sim.MovingCar[] movingCars,
                           Parking[] left,
                           Parking[] right,
                           boolean[] llights,
                           boolean[] rlights)
     {
+    	strategy0(movingCars, left, right, llights, rlights);
+    }
+    
+    private void strategy0(oneway.sim.MovingCar[] old_movingCars,
+            Parking[] left,
+            Parking[] right,
+            boolean[] llights,
+            boolean[] rlights) {
     	tick++;
     	MovingCar[] movingCars=new MovingCar[old_movingCars.length];
     	for (int i = 0; i < movingCars.length; i++) {
@@ -51,7 +62,7 @@ public class Player extends oneway.sim.Player
     	
     	for (int i = 1; i < nsegments-1; i++) {
 			if (left[i].size()+right[i].size()==capacity[i]){
-				if (isThereCar(movingCars, i-1, nblocks-1, 1)) rlights[i]=true;
+				if (isThereCar(movingCars, i-1, nblocks[i-1]-1, 1)) rlights[i]=true;
 				if (isThereCar(movingCars, i, 0, -1)) llights[i-1]=true;
 			}
 		}
@@ -86,9 +97,8 @@ public class Player extends oneway.sim.Player
         }	
     	right[0].removeLast();
         //rlights[0]=true;
-       // System.err.println(tick+" -  "+noCrash(movingCars, left, right, llights, rlights));
-    }
-
+       // System.err.println(tick+" -  "+noCrash(movingCars, left, right, llights, rlights));		
+	}
 
 	// check if the segment has traffic
     private boolean hasTraffic(MovingCar[] cars, int seg, int dir) {
@@ -112,7 +122,7 @@ public class Player extends oneway.sim.Player
     	//simple judge
     	for (int i = 0; i < nsegments; i++) {
 			if(rlights[i] && isThereCar(movingCars, i, 0)) return false;
-			if(llights[i] && isThereCar(movingCars, i, nblocks-1)) return false;
+			if(llights[i] && isThereCar(movingCars, i, nblocks[i]-1)) return false;
 		}
     	//update cars
     	left = copyList(left);
@@ -120,8 +130,8 @@ public class Player extends oneway.sim.Player
           //to right
     	for (int i = 0; i < movingCars.length; i++) {
     		if (movingCars[i].dir==1){
-    			if (movingCars[i].block==nblocks-1){
-    				if(movingCars[i].segment+1!=nsegments)
+    			if (movingCars[i].block==nblocks[movingCars[i].segment]-1){
+    				if(movingCars[i].segment!=nsegments-1)
     					right[movingCars[i].segment+1].add(0);
     				movingCars[i]=null;
     			}else {
@@ -154,8 +164,8 @@ public class Player extends oneway.sim.Player
     		//to left
     	for (int i = 1; i < left.length; i++) 
         if(left[i].size()>0 && llights[i-1]){
-        	if (isThereCar(movingCars,i-1,nblocks-2)) return false; //there will be crash
-        	MovingCar c=new MovingCar(i-1, nblocks-1, -1, 0);
+        	if (isThereCar(movingCars,i-1,nblocks[i-1]-2)) return false; //there will be crash
+        	MovingCar c=new MovingCar(i-1, nblocks[i-1]-1, -1, 0);
     		addedCars.add(c);
     		left[i].remove();
     	}
@@ -176,7 +186,7 @@ public class Player extends oneway.sim.Player
 		}
     	//simple judge
     	for (int i = 0; i < movingCars.length-1; i++) {
-			if(movingCars[i].segment*nblocks+movingCars[i].block==movingCars[i+1].segment*nblocks+movingCars[i+1].block)
+			if(position[movingCars[i].segment]+movingCars[i].block==position[movingCars[i+1].segment]+movingCars[i+1].block)
 				return false;
 		}
     	//get park info
@@ -194,7 +204,7 @@ public class Player extends oneway.sim.Player
 			for (int j = c.segment+1; j < parked.length; j++) 
 			if (parked[j]<capacity[j]){
 				parked[j]++;
-				blocking[i]=j*nblocks-(c.segment*nblocks+c.block);
+				blocking[i]=position[j]-(position[c.segment]+c.block);
 				break;
 			}
 		}
@@ -204,7 +214,7 @@ public class Player extends oneway.sim.Player
     			for (int j = c.segment; j >=0; j--) 
     			if (parked[j]<capacity[j]){
     				parked[j]++;
-    				blocking[i]=(c.segment*nblocks+c.block)-j*nblocks;
+    				blocking[i]=(position[c.segment]+c.block)-position[j];
     				break;
     			}
     		}
@@ -213,8 +223,8 @@ public class Player extends oneway.sim.Player
     		for (int j = 0; j <movingCars.length ; j++)
     			if (movingCars[i].dir==1 && movingCars[j].dir==-1){
     				int min=blocking[i]<blocking[j]?blocking[i]:blocking[j];
-    				int posi=movingCars[i].segment*nblocks+movingCars[i].block;
-    				int posj=movingCars[j].segment*nblocks+movingCars[j].block;
+    				int posi=position[movingCars[i].segment]+movingCars[i].block;
+    				int posj=position[movingCars[j].segment]+movingCars[j].block;
     				if (posj>posi && min+min>posj-posi){
     					crash++;
     					int crash_pos=(posi+posj)/2;
@@ -261,6 +271,6 @@ public class Player extends oneway.sim.Player
         return copy;
     }
     private int nsegments;
-    private int nblocks;
+    private int[] nblocks;
     private int[] capacity;
 }
