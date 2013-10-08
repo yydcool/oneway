@@ -27,12 +27,18 @@ public class Player extends oneway.sim.Player {
 		}
 	}
 
-	public void setLights(oneway.sim.MovingCar[] movingCars, Parking[] left,
+	public void setLights(oneway.sim.MovingCar[] old_movingCars, Parking[] left,
 			Parking[] right, boolean[] llights, boolean[] rlights) {
 		tick++;
 //		strategy0(movingCars, left, right, llights, rlights);
 //		strategy1(movingCars, left, right, llights, rlights);
 //		strategy2(movingCars, left, right, llights, rlights);
+		MovingCar[] movingCars = new MovingCar[old_movingCars.length];
+		for (int i = 0; i < movingCars.length; i++) {
+			movingCars[i] = new MovingCar(old_movingCars[i].segment,
+					old_movingCars[i].block, old_movingCars[i].dir,
+					old_movingCars[i].startTime);
+		}
 		boolean allSame=true;
 		for(int i=1;i<nblocks.length;i++){
 			if (nblocks[i]!=nblocks[0])
@@ -41,11 +47,49 @@ public class Player extends oneway.sim.Player {
 		if(allSame)
 			synchronizedStrategy(movingCars, left, right, llights, rlights);
 		else
-			strategy0(movingCars, left, right, llights, rlights);
+			//strategy0(movingCars, left, right, llights, rlights);
+			revertStrategy(movingCars, left, right, llights, rlights);
 		
 	}
 
-	private void synchronizedStrategy(oneway.sim.MovingCar[] movingCars,
+	private void revertStrategy(MovingCar[] movingCars, Parking[] left,
+			Parking[] right, boolean[] llights, boolean[] rlights) {
+		/*if(stopDomination(movingCars, left, right, tick)==0){
+			strategy0(movingCars, left, right, llights, rlights);
+			return;
+		}*/
+		//default value of lights
+		strategy0(movingCars, left, right, llights, rlights);
+		//revert the cars from left
+		if(stopDomination(movingCars, left, right, tick)==1){
+			int where=whereToRevert(movingCars, left, right,1);
+			for (int i = where; i < where+2; i++) {
+				if(i==nsegments) break;
+				boolean old=llights[where];
+				llights[where]=false;
+				if(noCrash(movingCars, left, right, llights, rlights)==false){
+					llights[where]=old;
+					//break;
+				}
+			}
+		}
+		//revert the cars from right
+		else if(stopDomination(movingCars, left, right, tick)==-1){
+			int where=whereToRevert(movingCars, left, right,-1);
+			for (int i = where; i > where-2; i--) {
+				if(i==-1) break;
+				boolean old=rlights[where];
+				rlights[where]=false;
+				if(noCrash(movingCars, left, right, llights, rlights)==false){
+					rlights[where]=old;
+					//break;
+				}
+			}
+		}
+		
+	}
+
+	private void synchronizedStrategy(MovingCar[] movingCars,
 			Parking[] left, Parking[] right, boolean[] llights,
 			boolean[] rlights) {
 		for (int i = 0; i != nsegments; ++i) {
@@ -269,7 +313,7 @@ public class Player extends oneway.sim.Player {
 				flag=!flag;
 	}
 	
-	private int stopDomination(oneway.sim.MovingCar[] old_movingCars,
+	private int stopDomination(MovingCar[] old_movingCars,
 			Parking[] left, Parking[] right, int tick) {
 		float left_penalty = 0, right_penalty = 0;
 		// process the left moving side
@@ -331,7 +375,7 @@ public class Player extends oneway.sim.Player {
 			return 1;
 	}
 
-	private void strategy0(oneway.sim.MovingCar[] old_movingCars,
+	private void strategy0(									MovingCar[] old_movingCars,
 			Parking[] left, Parking[] right, boolean[] llights,
 			boolean[] rlights) {
 		tick++;
