@@ -15,6 +15,7 @@ public class Player extends oneway.sim.Player {
 	int count=0;
 	int tick = -2;
 	int[] position;
+	boolean allSame;
 
 	public void init(int nsegments, int[] nblocks, int[] capacity) {
 		this.nsegments = nsegments;
@@ -25,25 +26,23 @@ public class Player extends oneway.sim.Player {
 		for (int i = 1; i < position.length; i++) {
 			position[i] = position[i - 1] + nblocks[i - 1];
 		}
+		allSame=true;
+		for(int i=1;i<nblocks.length;i++){
+			if (nblocks[i]!=nblocks[0])
+				allSame=false;
+		}
 	}
 
 	public void setLights(oneway.sim.MovingCar[] old_movingCars, Parking[] left,
 			Parking[] right, boolean[] llights, boolean[] rlights) {
 		tick++;
-//		strategy0(movingCars, left, right, llights, rlights);
-//		strategy1(movingCars, left, right, llights, rlights);
-//		strategy2(movingCars, left, right, llights, rlights);
 		MovingCar[] movingCars = new MovingCar[old_movingCars.length];
 		for (int i = 0; i < movingCars.length; i++) {
 			movingCars[i] = new MovingCar(old_movingCars[i].segment,
 					old_movingCars[i].block, old_movingCars[i].dir,
 					old_movingCars[i].startTime);
 		}
-		boolean allSame=true;
-		for(int i=1;i<nblocks.length;i++){
-			if (nblocks[i]!=nblocks[0])
-				allSame=false;
-		}
+		
 		if(allSame)
 			synchronizedStrategy(movingCars, left, right, llights, rlights);
 		else
