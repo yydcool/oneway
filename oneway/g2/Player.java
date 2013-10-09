@@ -58,33 +58,105 @@ public class Player extends oneway.sim.Player {
 			strategy0(movingCars, left, right, llights, rlights);
 			return;
 		}*/
+		
+		/***********KEVIN - IMPORTANT*****************/
+		//TODO add fixed[] array and call strategy 0 after domination checks
+		//noCrash always reverts back the changes we make, so it always goes to old lights
+		//so domination isn't stopped
+		//the method in TODO should solve the problem
+		/*************************************/
+		
 		//default value of lights
 		strategy0(movingCars, left, right, llights, rlights);
-		//revert the cars from left
+		
+		//revert the cars from left to right
 		if(stopDomination(movingCars, left, right, tick)==1){
+			boolean[] old=new boolean[2];
+			int count=0;
 			int where=whereToRevert(movingCars, left, right,1);
 			for (int i = where; i < where+2; i++) {
 				if(i==nsegments) break;
-				boolean old=llights[where];
-				llights[where]=false;
-				if(noCrash(movingCars, left, right, llights, rlights)==false){
-					llights[where]=old;
-					//break;
-				}
+				old[count]=llights[i];
+				llights[i]=false;
+				count++;
+			}
+			if(noCrash(movingCars, left, right, llights, rlights)==false){
+//					System.out.println("******1 Reverted!!!!***********");
+				for(int i=0;i<old.length;i++)
+					llights[where+i]=old[i];
+				//break;
 			}
 		}
-		//revert the cars from right
+		
+		//revert the cars from right to left
 		else if(stopDomination(movingCars, left, right, tick)==-1){
+			boolean[] old=new boolean[2];
+			int count=0;
 			int where=whereToRevert(movingCars, left, right,-1);
 			for (int i = where; i > where-2; i--) {
 				if(i==-1) break;
-				boolean old=rlights[where];
-				rlights[where]=false;
-				if(noCrash(movingCars, left, right, llights, rlights)==false){
-					rlights[where]=old;
-					//break;
+				old[count]=rlights[i];
+				rlights[i]=false;
+				count++;
+			}
+			if(noCrash(movingCars, left, right, llights, rlights)==false){
+//					System.out.println("******-1 Reverted!!!!***********");
+				for(int i=0;i<old.length;i++)
+				rlights[where-i]=old[i];
+				//break;
+			}
+		}
+		
+	}
+
+	//Finds the parking lot where the max penalty has accumulated
+	//revert process starts from this lot
+	private int whereToRevert(MovingCar[] movingCars, Parking[] left,
+			Parking[] right, int direction) {
+		
+		float max_penalty=0;
+		int where=0;
+		if(direction==-1)
+		{
+			int i=0;
+			for(i=0;i<nsegments;i++)
+			{
+				float lot_penalty=0;
+				LinkedList<Integer> parking= left[i];
+				for(int j=0;j<parking.size();j++)
+				{	
+							int temp=parking.get(j);
+							int time_waited=tick-temp;
+							lot_penalty+=(time_waited*Math.log(time_waited));
+				}
+				if(lot_penalty>max_penalty)
+				{
+					max_penalty=lot_penalty;
+					where=i;
 				}
 			}
+			return where;
+		}
+		else
+		{
+			int i=0;
+			for(i=0;i<nsegments;i++)
+			{
+				float lot_penalty=0;
+				LinkedList<Integer> parking= right[i];
+				for(int j=0;j<parking.size();j++)
+				{	
+							int temp=parking.get(j);
+							int time_waited=tick-temp;
+							lot_penalty+=(time_waited*Math.log(time_waited));
+				}
+				if(lot_penalty>max_penalty)
+				{
+					max_penalty=lot_penalty;
+					where=i;
+				}
+			}
+			return where;
 		}
 		
 	}
@@ -114,7 +186,7 @@ public class Player extends oneway.sim.Player {
 		}
 	}
 
-	private void strategy1(oneway.sim.MovingCar[] old_movingCars,
+	private void strategy1(MovingCar[] old_movingCars,
 			Parking[] left, Parking[] right, boolean[] llights,
 			boolean[] rlights) {
 		MovingCar[] movingCars = new MovingCar[old_movingCars.length];
@@ -313,6 +385,9 @@ public class Player extends oneway.sim.Player {
 				flag=!flag;
 	}
 	
+	
+	//returns the direction to favor if accumulation has occurred in one direction
+	//returns zero if the penalties on both sides are similar or too small
 	private int stopDomination(MovingCar[] old_movingCars,
 			Parking[] left, Parking[] right, int tick) {
 		float left_penalty = 0, right_penalty = 0;
@@ -337,8 +412,17 @@ public class Player extends oneway.sim.Player {
 				}
 			}
 		}
-		System.out.println(left_penalty);
-		System.out.println(right_penalty);
+//		System.out.println(left_penalty);
+//		System.out.println(right_penalty);
+		float difference=Math.abs(left_penalty-right_penalty);
+		float sum=left_penalty+right_penalty;
+		
+		float ratio=difference/sum;
+		float negligible_penalty=300; 
+		
+		if(ratio<=0.15 || left_penalty+right_penalty<=negligible_penalty)
+			return 0;
+		
 		if (left_penalty >= right_penalty)
 			return -1;
 		else
