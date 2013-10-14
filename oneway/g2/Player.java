@@ -511,7 +511,7 @@ public class Player extends oneway.sim.Player {
 		float ratio=difference/sum;
 		float negligible_penalty=20; 
 		
-		if(ratio<=0.3 || sum<=negligible_penalty)
+		if(ratio<=0.1 || sum<=negligible_penalty)
 			return 0;
 		
 		if (left_penalty >= right_penalty)
@@ -611,12 +611,12 @@ public class Player extends oneway.sim.Player {
 					old_movingCars[i].startTime);
 		}
 		// simple judge
-		for (int i = 0; i < nsegments; i++) {
+		/*for (int i = 0; i < nsegments; i++) {
 			if (rlights[i] && isThereCar(movingCars, i, 0))
 				return false;
 			if (llights[i] && isThereCar(movingCars, i, nblocks[i] - 1))
 				return false;
-		}
+		}*/
 		// update cars
 		left = copyList(left);
 		right = copyList(right);
