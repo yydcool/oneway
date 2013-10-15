@@ -11,7 +11,6 @@ public class Player extends oneway.sim.Player {
 	int left_entry_tick=0;
 	int right_entry_tick=0;
 	boolean flag =true;
-//	boolean entry=false;
 	int count=0;
 	int tick = 0;
 	int[] position;
@@ -48,11 +47,14 @@ public class Player extends oneway.sim.Player {
 		}
 		tick++;
 		
+		//We have to strategies that we use
+		//1. The synchronized strategy that is called when all segment lengths are equal and of size 2
+		//2. This strategy is used for all other cases. The advantages of using tis over revert strategy are explained in the report
 		if(canSync)
 			synchronizedStrategy(movingCars, left, right, llights, rlights);
 		else
 			strategy0(movingCars, left, right, llights, rlights);
-			//revertStrategy(movingCars, left, right, llights, rlights);
+//			revertStrategy(movingCars, left, right, llights, rlights);
 		
 	}
 
@@ -63,23 +65,21 @@ public class Player extends oneway.sim.Player {
 			return;
 		}*/
 		
-		/***********KEVIN - IMPORTANT*****************/
-		//TODO add fixed[] array and call strategy 0 after domination checks
-		//noCrash always reverts back the changes we make, so it always goes to old lights
-		//so domination isn't stopped
-		//the method in TODO should solve the problem
-		/*************************************/
-		
 		//default value of lights
 		strategy0(movingCars, left, right, llights, rlights);
+		
+		//this function checks if traffic from a particualr side is dominating
+		//If not, then it returns 0 and behaves like strategy 0
+		//If domination occurs, it returns -1 or 1 indicating that left or right side needs to be favored
 		int revert=DoWeNeedRevert(movingCars, left, right, tick);
 		if(tick>0)
 			System.out.println("revert is "+revert);
+		
 		//revert the cars from left to right
-		int window=6;
+		int window=10;
 		if(revert==1){
-			//boolean[] old=new boolean[2];
-			int count=0;
+		
+			//The whereToRevert function gives us the parking lot from where we need to revert traffic
 			int where=whereToRevert(movingCars, left, right,1);
 			for (int i = where; i < where+window; i++) {
 				if(i==nsegments) break;
@@ -102,8 +102,7 @@ public class Player extends oneway.sim.Player {
 		
 		//revert the cars from right to left
 		else if(revert==-1){
-			//boolean[] old=new boolean[2];
-			//int count=0;
+
 			int where=whereToRevert(movingCars, left, right,-1);
 			for (int i = where; i > where-window; i--) {
 				if(i==-1) break;
@@ -132,6 +131,9 @@ public class Player extends oneway.sim.Player {
 	private int whereToRevert(MovingCar[] movingCars, Parking[] left,
 			Parking[] right, int direction) {
 		
+		//we calculate the penalty accumulated on the left side and on the right side
+		//We give preference to the side that has more penalty
+		//This is side that needs to be reverted
 		float max_penalty=0;
 		int where=0;
 		if(direction==-1)
@@ -181,6 +183,9 @@ public class Player extends oneway.sim.Player {
 		
 	}
 
+	//this strategy is for equal segment lengths of size 2
+	//it synchronizes traffic so that cars always cross at parking lots
+	//This strategy can also work with zero sized parking lots
 	private void synchronizedStrategy(MovingCar[] movingCars,
 			Parking[] left, Parking[] right, boolean[] llights,
 			boolean[] rlights) {
@@ -206,6 +211,11 @@ public class Player extends oneway.sim.Player {
 		}
 	}
 
+	
+	//Main strategy: Set all lights to green
+	//Check if a crash will occur
+	//Revert the light to it's original color if a crash is detected
+	//Crashes are detected by calling the noCrash function
 	private void strategy0(MovingCar[] old_movingCars,
 			Parking[] left, Parking[] right, boolean[] llights,
 			boolean[] rlights) {
@@ -275,6 +285,10 @@ public class Player extends oneway.sim.Player {
 		// llights, rlights));
 	}
 
+	
+	//implemented during deliverable 2
+	//tries to stop the domination problem
+	//Not used later since it gives a very high penalty
 	private void strategy1(MovingCar[] old_movingCars,
 			Parking[] left, Parking[] right, boolean[] llights,
 			boolean[] rlights) {
@@ -386,7 +400,9 @@ public class Player extends oneway.sim.Player {
 		}
 	}
 
-	
+	//implemented during deliverable 2 as well
+	//tries to stop the domination problem
+	//Not used later since it gives a very high penalty
 	private void strategy2(oneway.sim.MovingCar[] old_movingCars,
 			Parking[] left, Parking[] right, boolean[] llights,
 			boolean[] rlights) {
@@ -411,19 +427,6 @@ public class Player extends oneway.sim.Player {
 			rlights[i]=false;
 		}
 		
-//		if(left_entry_tick+2==tick)
-//		for(int i=0;i<nsegments;i++)
-//		{
-//			llights[i]=true;
-//			rlights[i]=false;
-//		}
-//		
-//		if(right_entry_tick+2==tick)
-//			for(int i=0;i<nsegments;i++)
-//			{
-//				llights[i]=false;
-//				rlights[i]=true;
-//			}
 		boolean entry=false;
 		
 			System.out.println("nblocks: "+nblocks[0]+";tick: "+tick+";flag: "+flag+";count: "+count);
@@ -437,20 +440,8 @@ public class Player extends oneway.sim.Player {
 				rlights[i]=true;
 				}
 			}
-//			else if((tick-1) % (nblocks[0]+3)==0 && !flag)
-//			{
-//				entry=true;
-//				for (int i=0; i<nsegments;i++)
-//				{
-//				System.out.println("First if");
-//				llights[i]=false;
-//				rlights[i]=true;
-//				}
-//			}
 			if((tick-1)%(nblocks[0]+1)==0 && !flag)
 			{
-				//count++;
-				//right_entry_tick=tick;
 				entry=true;
 				for (int i=0; i<nsegments;i++)
 				{
@@ -458,22 +449,15 @@ public class Player extends oneway.sim.Player {
 				llights[i]=true;
 				rlights[i]=false;
 			    }
-//				count++;
 			}
-	/*		else if((tick-1) % (nblocks[0]+3)==0 && !flag)
-			{
-				entry=true;
-				for (int i=0; i<nsegments;i++)
-				{
-				System.out.println("First if");
-				llights[i]=true;
-				rlights[i]=false;
-				}
-			}*/
 			if(entry)
 				flag=!flag;
 	}
+
 	
+	//this function checks if we need to revert traffic
+	//Returns 0 if revert is not needed
+	//Returns -1 or 1 depending on the direction that needs to be favored
 	private int DoWeNeedRevert(MovingCar[] movingCars,
 			Parking[] left, Parking[] right, int tick) {
 		float left_penalty = 0, right_penalty = 0;
@@ -511,7 +495,7 @@ public class Player extends oneway.sim.Player {
 		float ratio=difference/sum;
 		float negligible_penalty=20; 
 		
-		if(ratio<=0.1 || sum<=negligible_penalty)
+		if(ratio<=.2 || sum<=negligible_penalty)
 			return 0;
 		
 		if (left_penalty >= right_penalty)
@@ -519,8 +503,10 @@ public class Player extends oneway.sim.Player {
 		else
 			return 1;
 	}
+	
 	//returns the direction to favor if accumulation has occurred in one direction
 	//returns zero if the penalties on both sides are similar or too small
+	//Made in connection with strategy1...not used anymore
 	private int stopDomination(MovingCar[] old_movingCars,
 			Parking[] left, Parking[] right, int tick) {
 		float left_penalty = 0, right_penalty = 0;
@@ -562,6 +548,7 @@ public class Player extends oneway.sim.Player {
 			return 1;
 	}
 	
+	//made in connection with strategy2...not used anymore
 	private int stopDomination2(oneway.sim.MovingCar[] old_movingCars,
             LinkedList<Integer> left,
             LinkedList<Integer> right, int tick)
@@ -601,6 +588,7 @@ public class Player extends oneway.sim.Player {
 		return false;
 	}
 
+	//checks if the new state of the system will lead to a crash or not
 	private boolean noCrash(MovingCar[] old_movingCars, Parking[] left,
 			Parking[] right, boolean[] llights, boolean[] rlights) {
 		// copy moving cars
@@ -750,6 +738,7 @@ public class Player extends oneway.sim.Player {
 		return false;
 	}
 
+	//Returns the car at the specified position
 	private MovingCar getCarByPos(int pos) {
 		MovingCar car=new MovingCar(0, pos, 1, 0);
 		while (nblocks[car.segment]<=car.block) {
@@ -770,6 +759,7 @@ public class Player extends oneway.sim.Player {
 		return false;
 	}
 	
+	//checks for a car on a particular segment
 	private boolean isThereCar2(MovingCar[] movingCars, int s, int d) {
 		for (int i = 0; i < movingCars.length; i++) {
 			if (movingCars[i] == null)
@@ -781,6 +771,8 @@ public class Player extends oneway.sim.Player {
 		return false;
 	}
 
+	
+	//checks for a moving car on a particular segment
 	private boolean isThereCar(MovingCar[] movingCars, int s, int b, int d) {
 		for (int i = 0; i < movingCars.length; i++) {
 			if (movingCars[i] == null)
